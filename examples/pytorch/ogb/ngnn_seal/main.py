@@ -16,18 +16,20 @@ from tqdm import tqdm
 from models import *
 from utils import *
 
+OGB_ROOT = '/home/mila/j/jianan.zhao/data/ogb/'
+
 
 class SEALOGBLDataset(Dataset):
     def __init__(
-        self,
-        root,
-        graph,
-        split_edge,
-        percent=100,
-        split="train",
-        ratio_per_hop=1.0,
-        directed=False,
-        dynamic=True,
+            self,
+            root,
+            graph,
+            split_edge,
+            percent=100,
+            split="train",
+            ratio_per_hop=1.0,
+            directed=False,
+            dynamic=True,
     ) -> None:
         super().__init__()
         self.root = root
@@ -258,7 +260,7 @@ def print_log(*x, sep="\n", end="\n", mode="a"):
 if __name__ == "__main__":
     # Data settings
     parser = argparse.ArgumentParser(description="OGBL (SEAL)")
-    parser.add_argument("--dataset", type=str, default="ogbl-vessel")
+    parser.add_argument("--dataset", type=str, default="ogbl-ddi")
     # GNN settings
     parser.add_argument(
         "--max_z",
@@ -276,7 +278,7 @@ if __name__ == "__main__":
         default="none",
         choices=["none", "input", "hidden", "output", "all"],
         help="You can set this value from 'none', 'input', 'hidden' or 'all' "
-        "to apply NGNN to different GNN layers.",
+             "to apply NGNN to different GNN layers.",
     )
     parser.add_argument(
         "--num_ngnn_layers", type=int, default=1, choices=[1, 2]
@@ -306,8 +308,10 @@ if __name__ == "__main__":
     parser.add_argument("--runs", type=int, default=10)
     parser.add_argument("--train_percent", type=float, default=1)
     parser.add_argument("--val_percent", type=float, default=1)
-    parser.add_argument("--final_val_percent", type=float, default=100)
-    parser.add_argument("--test_percent", type=float, default=100)
+    parser.add_argument("--final_val_percent", type=float, default=5)
+    # parser.add_argument("--final_val_percent", type=float, default=100)
+    parser.add_argument("--test_percent", type=float, default=5)
+    # parser.add_argument("--test_percent", type=float, default=100)
     parser.add_argument("--no_test", action="store_true")
     parser.add_argument(
         "--dynamic_train",
@@ -321,7 +325,7 @@ if __name__ == "__main__":
         type=int,
         default=24,
         help="number of workers for dynamic dataloaders; "
-        "using a larger value for dynamic dataloading is recommended",
+             "using a larger value for dynamic dataloading is recommended",
     )
     # Testing settings
     parser.add_argument(
@@ -336,7 +340,7 @@ if __name__ == "__main__":
         nargs="*",
         default=[10],
         help="hits@K for each eval step; "
-        "only available for datasets with hits@xx as the eval metric",
+             "only available for datasets with hits@xx as the eval metric",
     )
     parser.add_argument(
         "--test_topk",
@@ -365,7 +369,7 @@ if __name__ == "__main__":
     print(f"Command line input is saved.")
     print_log(f"{cmd_input}")
 
-    dataset = DglLinkPropPredDataset(name=args.dataset)
+    dataset = DglLinkPropPredDataset(name=args.dataset, root=OGB_ROOT)
     split_edge = dataset.get_edge_split()
     graph = dataset[0]
 
@@ -524,7 +528,7 @@ if __name__ == "__main__":
 
     for run in range(args.runs):
         stime = datetime.datetime.now()
-        print_log(f"\n++++++\n\nstart run [{run+1}], {stime}")
+        print_log(f"\n++++++\n\nstart run [{run + 1}], {stime}")
 
         model = DGCNN(
             args.hidden_channels,
@@ -578,10 +582,10 @@ if __name__ == "__main__":
                     print_log(key, to_print)
 
                 model_name = os.path.join(
-                    args.res_dir, f"run{run+1}_model_checkpoint{epoch}.pth"
+                    args.res_dir, f"run{run + 1}_model_checkpoint{epoch}.pth"
                 )
                 optimizer_name = os.path.join(
-                    args.res_dir, f"run{run+1}_optimizer_checkpoint{epoch}.pth"
+                    args.res_dir, f"run{run + 1}_optimizer_checkpoint{epoch}.pth"
                 )
                 torch.save(model.state_dict(), model_name)
                 torch.save(optimizer.state_dict(), optimizer_name)
@@ -604,7 +608,7 @@ if __name__ == "__main__":
                 continue
 
             idx_to_test = (
-                torch.topk(res, args.test_topk, largest=True).indices + 1
+                    torch.topk(res, args.test_topk, largest=True).indices + 1
             ).tolist()  # indices of top k valid results
             print_log(
                 f"Eval Metric: {eval_metric}",
@@ -613,17 +617,17 @@ if __name__ == "__main__":
             )
             for _idx, epoch in enumerate(idx_to_test):
                 print_log(
-                    f"Test Point[{_idx+1}]: "
+                    f"Test Point[{_idx + 1}]: "
                     f"Epoch {epoch:02d}, "
                     f"Test Metric: {dataset.eval_metric}"
                 )
                 if epoch not in tested:
                     model_name = os.path.join(
-                        args.res_dir, f"run{run+1}_model_checkpoint{epoch}.pth"
+                        args.res_dir, f"run{run + 1}_model_checkpoint{epoch}.pth"
                     )
                     optimizer_name = os.path.join(
                         args.res_dir,
-                        f"run{run+1}_optimizer_checkpoint{epoch}.pth",
+                        f"run{run + 1}_optimizer_checkpoint{epoch}.pth",
                     )
                     model.load_state_dict(torch.load(model_name))
                     optimizer.load_state_dict(torch.load(optimizer_name))
@@ -644,7 +648,7 @@ if __name__ == "__main__":
                     f"   Run: {run + 1:02d}, "
                     f"Epoch: {epoch:02d}, "
                     f"Valid ({args.val_percent}%) [{eval_metric}]: "
-                    f"{loggers[eval_metric].results['valid'][run][epoch-1]:.4f}, "
+                    f"{loggers[eval_metric].results['valid'][run][epoch - 1]:.4f}, "
                     f"Valid (final) [{dataset.eval_metric}]: {val_res:.4f}, "
                     f"Test [{dataset.eval_metric}]: {test_res:.4f}"
                 )
@@ -652,7 +656,7 @@ if __name__ == "__main__":
         etime = datetime.datetime.now()
         print_log(
             f"end run [{run}], {etime}",
-            f"spent time:{etime-stime}",
+            f"spent time:{etime - stime}",
         )
 
     for key in loggers.keys():
